@@ -1,5 +1,6 @@
 package org.javers.core
 
+import org.javers.core.commit.CommitId
 import org.javers.core.examples.typeNames.NewEntity
 import org.javers.core.examples.typeNames.NewEntityWithTypeAlias
 import org.javers.core.examples.typeNames.OldEntity
@@ -402,5 +403,27 @@ class JaversRepositoryShadowE2ETest extends JaversRepositoryE2ETest {
             it instanceof SnapshotEntity
             it.valueObjectRef instanceof DummyAddress
         }
+    }
+
+    def "should return exact commit for query with commitId"() {
+        given:
+            def ref1 = new SnapshotEntity(id: 2)
+            def ref2 = new SnapshotEntity(id: 3)
+            javers.commit("a", ref1)
+            javers.commit("a", ref2)
+
+            def entity = new SnapshotEntity(id: 1, listOfEntities: [ref1,ref2])
+            javers.commit("a", entity)
+
+        when:
+            def shadows = javers.findShadows(
+                            byInstanceId(1, SnapshotEntity)
+                            .withScopeDeepPlus(1)
+                            .withCommitId(CommitId.valueOf("543434.0")) //non-existing commitId
+                            .build())
+                    .collect{it.get()}
+
+        then:
+            shadows.size() == 0
     }
 }
